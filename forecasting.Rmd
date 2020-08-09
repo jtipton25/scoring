@@ -1,0 +1,302 @@
+---
+title: "An introduction into scoring"
+author: "John Tipton"
+date: "8/9/2020"
+output: 
+ ioslides_presentation:
+    widescreen: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.align = "center")
+```
+
+## Scoring rules
+
+- Lots of highly technical mathematics in the literature
+
+- Not as much "common sense" interpretation
+
+
+## Setup
+
+- Forecaster
+
+- Forecast
+
+- Scoring Rule
+
+- Goal: Develop a scoring rule so that in a competetition between forecasters, the forecasters are incentivized to forecast their true belief.
+
+## Example: Talking heads
+
+- Many news pundits make outrageous forecasts
+
+    - May or may not be their true beliefs
+
+    - Very little penalty for wrong forecast
+    
+    - Huge reward if outrageous forecast happens
+    
+- Most of these forecasts are wrong
+  
+    - The forecaster is not making calibrated predictions
+    
+    - The forecaster gets rewarded despite poor forecasting skills
+    
+    - The scoring rule isn't working
+
+## Properties of scoring rules
+
+- What properties should we want in a forecast?
+
+- We want **forecasts that are calibrated**
+
+    - If the weather person says there is a 50\% chance of rain, on average, there should be rain on 50\% of these days.
+    
+    - Weather forecasts communicated to the public are **not** calibrated
+    
+    - You said there was a 5\% chance of rain and it rained and I didn't have my umbrella -- You said it wouldn't rain!
+    
+## Properties of scoring rules
+
+- We want **scoring rules that can distinguish between good and bad forecasters**
+
+    - If one forecaster is better than another, does the socring rule select the better forecaster at least on average (mathematics-ese: under expectation)
+    
+    - Called proper scoring rules
+    
+    - The highest expected reward is obtained by reporting the true probability distribution
+
+## Properties of scoring rules
+
+- **Strictly** proper scoring rules will, on average choose the better forecast
+
+    - Forecaster Alice forecasts a probability of 0.8 with a 90\% CI of (0.75, 0.85)
+
+    - Forecaster Bob forecasts a probability of 0.8 with a 90\% CI of (0.70, 0.9)
+
+    - The true value is 0.8
+    
+- Which was the better forecast?  
+
+- Which forecaster has the better mean square error? Mean absolute error?
+
+## Properties of scoring rules
+
+- Scoring rules should not just reward **accurate** forecasts but should also reward **precise** forecasts
+
+
+```{r, echo = FALSE, fig.width=7, fig.height=8, out.width="50%", fig.align = "center"}
+require(plyr)
+
+draw.circle <- function (x, y, radius, nv = 100, border = NULL, col = NA, lty = 1, 
+                         lwd = 1) 
+{
+    xylim <- par("usr")
+    plotdim <- par("pin")
+    ymult <- (xylim[4] - xylim[3])/(xylim[2] - xylim[1]) * plotdim[1]/plotdim[2]
+    angle.inc <- 2 * pi/nv
+    angles <- seq(0, 2 * pi - angle.inc, by = angle.inc)
+    xv <- cos(angles) * radius + x
+    yv <- sin(angles) * radius * ymult + y
+    polygon(xv, yv, border = border, col = col, lty = lty, lwd = lwd)
+    invisible(list(x = xv, y = yv))
+}
+
+
+drawBoard <- function(title = "Dart Board") {
+    plot(-260:260, -260:260, type="n", xlab="", ylab="", asp = 1, main=title) 
+    # draw.circle(0, 0, 12.7/2, border="purple", lty=1, lwd=1) #  bull
+    draw.circle(0, 0, 31.8/2, border="purple", lty=1, lwd=1) #  outer bull
+    # draw.circle(0, 0, 107, border="purple", lty=1, lwd=1) 
+    draw.circle(0, 0, 99, border="purple", lty=1, lwd=1)  
+    # draw.circle(0, 0, 162, border="purple", lty=1, lwd=1) 
+    draw.circle(0, 0, 170, border="purple", lty=1, lwd=1)
+    # draw.circle(0, 0, 107, border="purple", lty=1, lwd=1)
+    draw.circle(0, 0, 99, border="purple", lty=1, lwd=1)
+    draw.circle(0, 0, 451/2, border="black", lty=1, lwd=1) #outer edge of board
+    
+    angle.inc <- 2 * pi/20 # 20 sections in a board
+    angles <- seq(0, 2 * pi - angle.inc, by = angle.inc)
+    angles <- angles - .5 * pi / 10 #dart boards are rotated slightly 
+    xSeries <- sin(angles) * 170
+    ySeries <- cos(angles) * 170
+    
+    for (i in 1:20){
+        lines(c(0,xSeries[i]),c(0,ySeries[i] ))
+    }
+    
+    points <- c(20,  1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5)
+    angles <- seq(0, 2 * pi - angle.inc, by = angle.inc)
+    xSeries <- sin(angles) * 180
+    ySeries <- cos(angles) * 180
+    for (i in 1:20){
+        text(xSeries[i],ySeries[i], points[i] )
+    }
+}
+
+throw <- function(n, targetX, targetY, stdev){
+    # input the x, y coord of a throw and the standard deviation of throw pattern
+    # return the x,y coord of the resulting throw
+    # assumes normal distribution of throws
+    # returns a data frame with columns xThrow and yThrow
+    
+    distanceFromTarget <- rnorm(n, 0, stdev)
+    angleFromTarget <-     runif(n, 0, 2 * pi)
+    xOffset <- sin(angleFromTarget) * distanceFromTarget
+    yOffset <- cos(angleFromTarget) * distanceFromTarget
+    
+    xThrow <- targetX + xOffset
+    yThrow <- targetY + yOffset
+    return(data.frame(xThrow, yThrow ))
+}
+
+
+
+layout(matrix(1:4, 2, 2))
+throw_not_accurate_not_precise <- throw(10, 100, 100, 100)
+drawBoard(title = "not accurate and not precise")
+points(throw_not_accurate_not_precise, pch = 16, col = "orange")
+
+throw_accurate_not_precise <- throw(10, 0, 0, 100)
+drawBoard(title = "accurate and not precise")
+points(throw_accurate_not_precise, pch = 16, col = "orange")
+
+throw_not_accurate_precise <- throw(10, 100, 100, 20)
+drawBoard(title = "not accurate but precise")
+points(throw_not_accurate_precise, pch = 16, col = "orange")
+
+throw_accurate_precise <- throw(10, 0, 0, 20)
+drawBoard(title = "accurate and precise")
+points(throw_accurate_precise, pch = 16, col = "orange")
+```
+    
+
+
+## Scoring rule language can sometimes be confusing
+
+- **Probabilistic forecast:**
+    - Scoring rule literature: 
+        - forecasting the probability of an event happening 
+        - 35\% chance of rain tomorrow
+    - Bayesian forecasting literature: 
+        - the forecast is a probability distribution
+        - $y_t \sim N(\mu, \sigma^2)$
+        
+- **Point forecast**
+    - Single valued forecasts
+        - $\hat{y}_t =  2.2$
+
+## How do we get point forecasts anyway?
+
+- Point forecasts **start with a distribution!**
+
+```{r, echo = FALSE, message = FALSE, out.width = "90%"}
+library(latex2exp)
+y <- 2
+alpha <- 10
+theta <- 10
+density_function <- function (x) {
+  return(dgamma(x, alpha, theta))
+}
+likelihood_function <- function (x) {
+  return(dgamma(y, alpha, x))
+}
+# layout(matrix(1:2, 2, 1))
+# ## plot density function
+# curve(density_function(x), 0, 4, main = "Density function", xlab="y", 
+#       ylab=TeX("$\\lbrack$y|$\\theta$ $\\rbrack$"))
+# text(1, 0.4, paste0(
+#   "Area = ", round(integrate(density_function, 0, Inf)[1]$value, digits=2)))
+# points(2, density_function(2), col="red", pch=16)
+# curve(likelihood_function(x), 0, 10, main = "Likelihood function",
+#       xlab=TeX("$\\theta$"), ylab=TeX("$L(y|\\theta)$"))
+# text(5, 0.3, paste0(
+#   "Area = ", round(integrate(likelihood_function, 0, Inf)[1]$value, digits=2)))
+# points(10, likelihood_function(10), col="red", pch=16)
+
+layout(matrix(1))
+curve(likelihood_function(x), 0, 10, main = "Likelihood function",
+      xlab=TeX("$\\theta$"), ylab=TeX("$L(y|\\theta)$"), ylim=c(-0.02, 0.66))
+segments(3, 0, 3, likelihood_function(3))
+arrows(3, likelihood_function(3), 0, likelihood_function(3))
+text(3.1, -0.02, TeX("$\\theta_1$ = 3"))
+text(1.5, likelihood_function(3)+ .02, TeX("$L(y|\\theta_1)$"))
+
+segments(6, 0, 6, likelihood_function(6))
+arrows(6, likelihood_function(6), 0, likelihood_function(6))
+text(6.1, -0.02, TeX("$\\theta_2$ = 6"))
+text(1.5, likelihood_function(6) + .02, TeX("$L(y|\\theta_2)$"))
+
+segments(5, 0, 5, likelihood_function(5), lty=2)
+text(5.3, 0.66, TeX("$\\hat{\\theta}_{MLE}$ = 5"))
+```
+
+## How do we get point forecasts anyway?
+
+- **Consistent** scoring functions are a subset of proper scoring rules that depend on the predictive distribution through a function.
+
+    - If the scoring rule is mean square error (MSE), the consistent function is the forecast distribution mean
+    
+    - If the scoring rule is mean absolute error (MAE), the consistent function is the forecast distribution median
+    
+- If you use maximum *a posteriori* inference in a Bayesian model, which score is consistent (and therefore proper?)    
+
+## The problem of evaluating point forecasts
+
+- True value: $y_t = 4$
+- Forecast distribution mean: $\hat{y}_t = 3.75$
+- MSE: 0.125
+
+```{r, out.width="60%"}
+layout(matrix(1:2, 1, 2))
+curve(dnorm(x, 3.75, 1), from = 0, to = 8, ylim = c(0, 1))
+abline(v = 4, col = "blue")
+text(5, 0.45, TeX("$y_t = 4$"), col = "blue")
+abline(v = 3.75, col = "red")
+text(2.5, 0.45, TeX("$\\hat{y}_t = 3.75$"), col = "red")
+
+curve(dnorm(x, 3.75, 0.5), from = 0, to = 8, ylim = c(0, 1))
+abline(v = 4, col = "blue")
+text(5, 0.85, TeX("$y_t = 4$"), col = "blue")
+abline(v = 3.75, col = "red")
+text(2.5, 0.85, TeX("$\\hat{y}_t = 3.75$"), col = "red")
+```
+
+## The problem of evaluating point forecasts
+
+- True value: $y_t = 4$
+- Forecast distribution mean: $\hat{y}_t = 2.5$
+- MSE: 2.25
+
+```{r, out.width="60%"}
+layout(matrix(1:2, 1, 2))
+curve(dnorm(x, 2.25, 1), from = 0, to = 8, ylim = c(0, 1))
+abline(v = 4, col = "blue")
+text(5, 0.45, TeX("$y_t = 4$"), col = "blue")
+abline(v = 2.25, col = "red")
+text(2.5, 0.45, TeX("$\\hat{y}_t = 2.25$"), col = "red")
+
+curve(dnorm(x, 2.25, 0.5), from = 0, to = 8, ylim = c(0, 1))
+abline(v = 4, col = "blue")
+text(5, 0.85, TeX("$y_t = 4$"), col = "blue")
+abline(v = 2.25, col = "red")
+text(2.5, 0.85, TeX("$\\hat{y}_t = 2.25$"), col = "red")
+```
+
+## Problem with point forecasts
+
+- Proper scoring rules on point forecasts measure **calibration**
+
+- **Sharpness** is important when evaluating a forecast
+
+- Ideas for measuring sharpness?
+
+
+
+
+
+
+
+
