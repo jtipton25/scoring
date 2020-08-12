@@ -9,6 +9,8 @@ This repository is to present and explain scoring rules.
 
 - [Probabilistic Forecasting](https://www.annualreviews.org/doi/pdf/10.1146/annurev-statistics-062713-085831)
 
+- [Making and Evaluating point forecasts](https://arxiv.org/pdf/0912.0902.pdf)
+
 - [Strictly Proper Scoring Rules, Prediction,
 and Estimation](https://www.stat.washington.edu/raftery/Research/PDF/Gneiting2007jasa.pdf)
     - Highly technical paper about the mathematics of scoring rules
