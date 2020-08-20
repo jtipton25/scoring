@@ -1,7 +1,7 @@
 ---
 title: "An introduction into scoring"
 author: "John Tipton"
-date: "8/9/2020"
+date: "8/17/2020"
 output: 
  ioslides_presentation:
     widescreen: true
@@ -67,6 +67,8 @@ knitr::opts_chunk$set(echo = FALSE, fig.align = "center")
     - Called proper scoring rules
     
     - The highest expected reward is obtained by reporting the true probability distribution
+    
+- [Really nice animation](https://en.wikipedia.org/wiki/File:Scoring_functions.gif)    
 
 ## Properties of scoring rules
 
@@ -87,8 +89,8 @@ knitr::opts_chunk$set(echo = FALSE, fig.align = "center")
 - Scoring rules should not just reward **accurate** forecasts but should also reward **precise** forecasts
 
 
-```{r, echo = FALSE, fig.width=7, fig.height=8, out.width="50%", fig.align = "center"}
-require(plyr)
+```{r, echo = FALSE, message = FALSE, fig.width=7, fig.height=8, out.width="40%", fig.align = "center"}
+library(plyr)
 
 draw.circle <- function (x, y, radius, nv = 100, border = NULL, col = NA, lty = 1, 
                          lwd = 1) 
@@ -296,6 +298,93 @@ text(2.5, 0.85, TeX("$\\hat{y}_t = 2.25$"), col = "red")
 
 
 
+## Work in progress | TBD
+
+- Prediction-based scoring rules
+    - MSE, MAE, AUC, CRPS, elpd (approximate loo-cv)
+
+## Work in progress | TBD
+
+- MSE
+
+    $$
+    \begin{align*}
+    (\hat{y}_t - y_t)^2
+    \end{align*}
+    $$
+    
+- MAE
+
+    $$
+    \begin{align*}
+    |\hat{y}_t - y_t|
+    \end{align*}
+    $$
+    
+## Work in progress | TBD
+
+- AUC is a scoring rule for binary forecasts
+
+   - Not a proper scoring rule but common in machine learning
+   
+   - Combines a forecast and a decision rule to 
+
+## Work in progress | TBD    
+
+- Why CRPS is a good scoring rule
+    - Can think of CRPS as a combination of how good the point forecast is and how reliable the forecast distribution is.
+
+- [https://arxiv.org/pdf/1709.04743.pdf](https://arxiv.org/pdf/1709.04743.pdf)
+
+## WIP | CRPS
+
+Let $y_t$ be an observed value indexed by $t$. Let ${F}(\hat{y_t})$ be the cumulative forecast distribution (often approximated by MCMC). Then CRPS is 
+
+$$
+\begin{align*}
+CRPS & = \int_{-\infty}^{\infty} \left( F(\hat{y_t}) - I\left\{ \hat{y}_t  > y_t\right\} \right)^2 \,d \hat{y}_t
+\end{align*}
+$$
+
+## WIP | CRPS
+
+When using MCMC to estimate $F(\hat{y}_t)$ with $K$ MCMC samples $\{\hat{y}_t^{(1)}, \ldots, \hat{y}_t^{(K)}\}$, the CRPS can be written as
+
+$$
+\begin{align*}
+CRPS & = \frac{1}{K^2} \sum_{k=1}^K \sum_{k'=1}^K |\hat{y}_t^{(k)} - \hat{y}_t^{(k')}| - \frac{1}{K} \sum_{k=1}^K |\hat{y}_t^{(k)} - y_t|
+\end{align*}
+$$
+
+- The first sum is a measure of how spread out the forecast distribution is.
+- The second sum is a measure of how far each probabilistic forecast element is from the observed value.
+- If there is a single (point forecast -- K = 1), CRPS reducs to MAE (double check conditions)
+
+
+## WIP | LOO
+
+- Fully Bayesian MCMC allows for a single MCMC fit to approximate leave-one-out cross validation
+
+- Easy to implement within the [`stan` ecosystem](https://mc-stan.org/)
+
+- [http://mc-stan.org/loo/index.html](http://mc-stan.org/loo/index.html)
+
+## WIP | Other than scoring how do you validate
+- Probability Integral Transform (PIT)
+
+```{r, out.width="80%"}
+N <- 10^4
+layout(matrix(1:2, 1, 2))
+hist(pnorm(rnorm(N)), main = "PIT for 1000 normals")
+hist(ppois(rpois(n = N, lambda = 100), lambda = 100), main = "PIT for 1000 Poissons")
+```
+
+## WIP | Other than scoring how do you validate
+
+
+## Seems like a lot of work to me... Why bother?
+
+- Can we find an example dataset or simulation that can illustrate the results?
 
 
 
